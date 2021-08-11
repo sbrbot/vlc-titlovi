@@ -15,7 +15,7 @@ biblioteke: zzlib, inflate-bit32 i numberlua
 
 
 title = "VLC-Titlovi"
-version = "1.0"
+version = "1.1"
 program = title .. " " ..version
 
 icon = "\137\80\78\71\13\10\26\10\0\0\0\13\73\72\68\82\0\0\0\32\0\0\0\32\4\3\0\0\0\129\84\103\199\0\0\0\27\80\76\84\69\130\48\69\29\29\29\69\69\69\94\94\94\121\121\121\146\146\146\177\177\177\201\201\201\234\234\234\126\204\192\130\0\0\0\1\116\82\78\83\0\64\230\216\102\0\0\0\124\73\68\65\84\40\207\99\96\160\46\96\20\20\64\225\43\10\10\10\34\113\211\59\138\145\5\4\5\35\58\58\2\225\2\108\229\138\130\194\29\29\197\48\179\68\59\58\90\4\5\213\18\224\102\11\122\0\149\11\32\89\38\40\92\158\128\98\59\138\109\80\21\229\37\130\130\225\229\229\138\2\16\1\176\149\106\64\107\4\33\2\98\29\29\205\130\194\21\29\109\130\96\1\38\37\36\160\64\164\64\40\28\224\18\160\135\22\6\100\45\212\137\79\0\21\236\54\197\104\55\24\83\0\0\0\0\73\69\78\68\174\66\96\130"
@@ -28,13 +28,13 @@ pg=1
 rpp=15
 r=0
 
-jezici = { [1] = {"ba","bosanski","bošnjački",1},
-           [4] = {"hr","hrvatski","hrvatski",13},
-           [5] = {"mk","makedonski","makedonski",24},
-           [6] = {"si","slovenski","slovenski",37},
-           [7] = {"rs","srpski","srpski",49},
-           [2] = {"ћ", "cirilica","ћирилица",57},
-           [3] = {"en","english","engleski",70} }
+jezici = { [1] = {"ba","bosanski","bošnjački",1,8},
+           [4] = {"hr","hrvatski","hrvatski",10,8},
+           [5] = {"mk","makedonski","makedonski",18,12},
+           [6] = {"si","slovenski","slovenski",31,10},
+           [7] = {"rs","srpski","srpski",43,12},
+           [2] = {"ћ", "cirilica","ћирилица",55,12},
+           [3] = {"en","english","engleski",69,12} }
 
 sortiranje = { [0] = "-",
                [1] = "po imenu",
@@ -75,9 +75,11 @@ function activate()
   dlg:add_label("<small>Filter za jezik titlova:</small>",1,1,80,1)
   
   for key,val in pairs(jezici) do
-    dlg_cbox[key] = dlg:add_check_box(val[3],false,val[4],2,20,1)
+    dlg_cbox[key] = dlg:add_check_box(val[3],false,val[4],2,val[5],1)
     --if(vlc.config.get(val[1])=="1") then dlg_cbox[key]:set_checked(true) end
   end
+
+  --
 
   dlg:add_label("<small>Sortiranje rezultata:</small>",1,3,40,1)
   dlg:add_label("<small>Tip sadržaja:</small>",41,3,40,1)
@@ -93,19 +95,22 @@ function activate()
   end
   dlg_uld = dlg:add_text_input("",81,4,20,2)
 
-  dlg:add_label("<small>Dio imena za pretraživanje:</small>",1,7,80,1)
+  --
 
-  dlg_txt = dlg:add_text_input(getKeywords(getVideoNameWoExt()),1,8,80,2)
-  dlg_btn = dlg:add_button("Pronađi",find_first,81,8,20,2)
+  dlg:add_label(" ",1,7,80)
+  dlg:add_label("<small>Dio imena za pretraživanje:</small>",1,8,80)
+
+  dlg_txt = dlg:add_text_input(getKeywords(getVideoNameWoExt()),1,9,80,1)
+  dlg_btn = dlg:add_button("Pronađi",find_first,81,9,20,1)
 
   dlg_res = dlg:add_label(getFilePath(),1,10,80)
-  dlg:add_button("<",find_prev,81,10,8)
-  dlg_pg  = dlg:add_label("<center>1</center>",90,10,2)
-  dlg:add_button(">",find_next,93,10,8)
+  dlg:add_button("<",find_prev,81,10,6)
+  dlg_pg  = dlg:add_label("<center>1</center>",89,10,4)
+  dlg:add_button(">",find_next,95,10,6)
   
   --
   
-  dlg_lst = dlg:add_list(1,12,80,12)
+  dlg_lst = dlg:add_list(1,12,80,32)
   dlg:add_label("<center><small>stranica</small></center>",81,12,20)
   
   dlg:add_button("Učitaj",load,81,13,20)
@@ -113,12 +118,12 @@ function activate()
   dlg_typ = dlg:add_label("",81,14,20) --ZIP/SRT
 
   if(getFilePath() ~= "") then
-    dlg_map = dlg:add_label("<center><a href=\"file:///" .. getFilePath() .. "\">Folder</a></center>",81,18,20)
+    dlg_map = dlg:add_label("<center><a href=\"file:///" .. getFilePath() .. "\">Folder</a></center>",81,30,20)
   end
 
-  dlg:add_button("Pomoć",about,81,20,20)
+  dlg:add_button("Pomoć",about,81,36,20)
   
-  dlg:add_label("<center><small>&copy; by <a href=\"mailto:stjepan.brbot@gmail.com\">Stjepan Brbot</a>, 2021</small></center>",81,22,20)
+  dlg:add_label("<center><small>&copy; by <a href=\"mailto:stjepan.brbot@gmail.com\">Stjepan Brbot</a>, 2021</small></center>",81,42,20)
 
   dlg:show()
 
@@ -156,11 +161,11 @@ function find(pg)
     dlg_typ:set_text("")
     dlg_lst:clear()
     
-    --dlg_icn = dlg:add_spin_icon(90,16)
-    --dlg_icn:animate()
-    --dlg:update()
+    dlg_icn = dlg:add_spin_icon(89,7,4,2)
+    dlg_icn:animate()
+    dlg:update()
 
-    local url = "https://titlovi.com/titlovi/?prijevod=" .. string.gsub(dlg_txt:get_text()," ","%+") .. "&pg=" .. pg
+    local url = "https://titlovi.com/titlovi/?prijevod=" .. vlc.strings.encode_uri_component(dlg_txt:get_text()) .. "&pg=" .. pg
 
     local ojezici = {}
     for key,val in pairs(jezici) do
@@ -217,9 +222,9 @@ function find(pg)
 
     dlg_btn:set_text("Pronađi")
     
-    --dlg_icn:stop()
-    --dlg:del_widget(dlg_icn)
-    --dlg:update()
+    dlg_icn:stop()
+    dlg:del_widget(dlg_icn)
+    dlg:update()
     
     dlg_res:set_text("Pronađeno: <b>" .. r .. "</b>")
         
@@ -274,7 +279,7 @@ end
 function select()
 
   for idx,filename in pairs(dlg_lst:get_selection()) do
-    save(zzlib.unzip(buf,filename))
+    save(zzlib.unzip(buf,filename),filename)
     break -- spremi samo prvi zapis
   end
   
