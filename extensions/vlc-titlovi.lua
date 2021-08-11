@@ -325,8 +325,8 @@ function about()
   .."<li>odaberite titl s popisa (može biti da je SRT ili ZIP) i učitajte ga tipkom [<u>Učitaj</u>]</li>"
   .."<li>ako je datoteka ZIP s više titlova određeni titl možete odabrati tipkom [<u>Odaberi</u>]</li></ul>"
   .." Datoteku titla sprema se u folder u kojemu je film i istog imena kao film samo s nastavkom .srt"
-  .." Ako se film ne reproducira u VLC, onda se titl snima u korisnikov osobni folder.",1,12,80,12)
-  oprg = dlg:add_button("ok",help,81,20,20)
+  .." Ako se film ne reproducira u VLC, onda se titl snima u korisnikov osobni folder.",1,12,80,32)
+  oprg = dlg:add_button("ok",help,81,36,20)
   dlg:update()
 end
 
