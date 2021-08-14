@@ -15,8 +15,12 @@ biblioteke: zzlib, inflate-bit32 i numberlua
 
 
 title = "VLC-Titlovi"
-version = "1.2"
+version = "1.3"
+
 program = title .. " " ..version
+
+config_file = "vlc-titlovi.conf"
+config = ""
 
 icon = "\137\80\78\71\13\10\26\10\0\0\0\13\73\72\68\82\0\0\0\32\0\0\0\32\4\3\0\0"..
        "\0\129\84\103\199\0\0\0\27\80\76\84\69\130\48\69\29\29\29\69\69\69\94\94"..
@@ -61,6 +65,9 @@ tipovi = { [0] = "-",
            [1] = "film",
            [2] = "serija",
            [3] = "dokumentarac" }
+           
+           
+interface = { [""] = {} }
 
 
 local zzlib = require("zzlib")
@@ -81,6 +88,8 @@ end
 function activate()
 
   dlg = vlc.dialog(program)
+  
+  -- 1st line ------------------------------------------------------------------
 
   dlg:add_label("<small>Filter za jezik titlova:</small>",1,1,80,1)
   
@@ -89,7 +98,7 @@ function activate()
     --if(vlc.config.get(val[1])=="1") then dlg_cbox[key]:set_checked(true) end
   end
 
-  --
+  -- 2nd line ------------------------------------------------------------------
 
   dlg:add_label("<small>Sortiranje rezultata:</small>",1,3,60,1)
   dlg:add_label("<small>Tip sadržaja:</small>",61,3,20,1)
@@ -103,9 +112,9 @@ function activate()
   for key,val in pairs(tipovi) do
     dlg_type:add_value(val,key)
   end
-  dlg_uld = dlg:add_text_input("",81,4,20,2)
+  dlg_upld = dlg:add_text_input("",81,4,20,2)
 
-  --
+  -- 3rd line ------------------------------------------------------------------
 
   dlg:add_label(" ",1,7,80)
   dlg:add_label("<small>Dio imena za pretraživanje:</small>",1,8,60)
@@ -113,8 +122,12 @@ function activate()
   dlg:add_label("<small>Epizoda:</small>",71,8,10)
   
   dlg_txt = dlg:add_text_input(cleanKeywords(getVideoNameWoExt()),1,9,60)
-  dlg_sez = dlg:add_text_input(string.match(getVideoNameWoExt(),".*[sS](%d?%d)"),61,9,10)
-  dlg_epi = dlg:add_text_input(string.match(getVideoNameWoExt(),".*[eE](%d?%d)"),71,9,10)
+  local s = string.match(getVideoNameWoExt(),".*[sS](%d?%d)")
+  if(s == nil) then s="" end
+  dlg_sez = dlg:add_text_input(s,61,9,10)
+  local e = string.match(getVideoNameWoExt(),".*[eE](%d?%d)")
+  if(e == nil) then e="" end
+  dlg_epi = dlg:add_text_input(e,71,9,10)
   dlg_btn = dlg:add_button("Pronađi",find_first,81,9,20,1)
 
   dlg_res = dlg:add_label(getFilePath(),1,10,80)
@@ -122,22 +135,36 @@ function activate()
   dlg_pg  = dlg:add_label("<center>1</center>",89,10,4)
   dlg:add_button(">",find_next,95,10,6)
   
-  --
+  -- 4.1st line ----------------------------------------------------------------
   
   dlg_lst = dlg:add_list(1,12,80,32)
   dlg:add_label("<center><small>stranica</small></center>",81,12,20)
   
+  -- 4.2nd line ----------------------------------------------------------------
+  
   dlg:add_button("Učitaj",load,81,15,20)
+  
+  -- 4.3rd line ----------------------------------------------------------------
 
   dlg_typ = dlg:add_label("",81,16,20) --ZIP/SRT
+  
+  -- 4.4th line ----------------------------------------------------------------
 
   if(getFilePath() ~= "") then
     dlg_map = dlg:add_label("<center><a href=\"file:///" .. getFilePath() .. "\">Folder</a></center>",81,30,20)
   end
+  
+  -- 4.5th line ----------------------------------------------------------------
 
   dlg:add_button("Pomoć",about,81,36,20)
   
+  -- 4.6th line ----------------------------------------------------------------
+  
   dlg:add_label("<center><small>&copy; by <a href=\"mailto:stjepan.brbot@gmail.com\">Stjepan Brbot</a>, 2021</small></center>",81,42,20)
+
+  ------------------------------------------------------------------------------
+  
+  loadConfig()
 
   dlg:show()
 
@@ -145,14 +172,12 @@ end
 
 function find_first()
   pg=1
-  dlg_pg:set_text("<center>" .. pg .. "</center>");
   find(pg)
 end
 
 function find_prev()
   if(pg>1) then 
     pg = pg - 1
-    dlg_pg:set_text("<center>" .. pg .. "</center>");
     find(pg)
   end
 end
@@ -160,12 +185,13 @@ end
 function find_next()
   if(pg<math.ceil(r/rpp)) then
     pg = pg + 1
-    dlg_pg:set_text("<center>" .. pg .. "</center>");
     find(pg)
   end
 end
 
 function find(pg)
+
+  dlg_pg:set_text("<center>" .. pg .. "</center>");
 
   r = 0
   
@@ -209,8 +235,8 @@ function find(pg)
       dlg_epi:set_text(e)
       url = url .. "&e=" .. e
     end
-    if(dlg_uld:get_text() ~= "") then 
-      url = url .. "&korisnik=" .. vlc.strings.encode_uri_component(dlg_uld:get_text()) 
+    if(dlg_upld:get_text() ~= "") then 
+      url = url .. "&korisnik=" .. vlc.strings.encode_uri_component(dlg_upld:get_text()) 
     end
     
     url = url .. "&pg=" .. pg
@@ -244,12 +270,13 @@ function find(pg)
         ss,ee = string.find(h4,"<span")
         naslov = naslov .. " " .. string.sub(h4,1,ss-1)
 
-        ss,ee = string.find(li,"alt=\"%d\"")
-        lang = tonumber(string.sub(li,ss+5,ee-1))
+        lang = tonumber(string.match(li,"alt=\"(%d)\""))        
 
         --[[
         naslov = naslov .. " " string.match(li,"<h4>(.-)<span")
-        lang = tonumber(string.match(li,"alt=\"(%d)\""))        
+
+        ss,ee = string.find(li,"alt=\"%d\"")
+        lang = tonumber(string.sub(li,ss+5,ee-1))
         --]]
         
         dlg_lst:add_value("[" .. jezici[lang][1] .. "] " .. naslov,id)
@@ -273,7 +300,7 @@ function find(pg)
     
     dlg_res:set_text("Pronađeno: <b>" .. r .. "</b>")
         
-    vlc.msg.dbg("[VLC-titlovi] Završena pretraga sajta")
+    vlc.msg.dbg("[VLC-Titlovi] Završena pretraga sajta")
   
   end
   
@@ -290,14 +317,17 @@ function load()
     url = url .. key
 
     local stream = vlc.stream(url)
-    if not stream then vlc.msg.err("[VLC-Titlovi] Sajt Titlovi.com nedostupan ") return false end
+    if not stream then
+      vlc.msg.warn("[VLC-Titlovi] Sajt Titlovi.com nedostupan ") 
+      return false 
+    end
     local data = stream:read(8^4)
     while(data ~= nil and data ~= "") do
       buf = buf .. data
       data = stream:read(8^4)
     end
     
-    vlc.msg.dbg("[VLC-titlovi] Podaci učitani sa sajta")
+    vlc.msg.dbg("[VLC-Titlovi] Podaci učitani sa sajta")
 
     if(string.sub(buf,1,2) == "PK") then -- Phil Katz
       dlg_typ:set_text("<center>ZIP<c/enter>")
@@ -329,7 +359,7 @@ function select()
     break -- spremi samo prvi zapis
   end
   
-  vlc.msg.dbg("[VLC-titlovi] Pročitani podaci iz ZIP arhive")
+  vlc.msg.dbg("[VLC-Titlovi] Pročitani podaci iz ZIP arhive")
 
 end
 
@@ -349,7 +379,7 @@ function save(data,filename)
   end
   dlg_typ:set_text("<center>Snimljeno!</center>")
 
-  vlc.msg.dbg("[VLC-titlovi] Titl snimljen: " .. filename)
+  vlc.msg.info("[VLC-Titlovi] Titl snimljen: " .. filename)
 
 end
 
@@ -360,6 +390,7 @@ function about()
   .." titlova sa regionalnog sajta <a href=\"http://titlovi.com\">Titlovi.com</a>. " 
   .."<ul><li>odaberite jezike titla, vrstu sortiranja rezultata, vrstu sadržaja i ev. upladera titla</li>"
   .."<li>unesite 2-3 ključne riječi iz imena (ne pretjerujte jer od previše se smanuje pretraga)</li>"
+  .."<li>upišite brojkom sezonu (0 znači sve sezone) i/ili pojedinu epizodu iz sezone/serije"
   .."<li>pokrenite pretraživanje tipkom [<u>Pronađi</u>] nakon čega se pronađeni titlovi prikazuju u listi</li>"
   .."<li>odaberite titl s popisa (može biti da je SRT ili ZIP) i učitajte ga tipkom [<u>Učitaj</u>]</li>"
   .."<li>ako je datoteka ZIP s više titlova određeni titl možete odabrati tipkom [<u>Odaberi</u>]</li></ul>"
@@ -376,6 +407,33 @@ function help()
 end
 
 --
+
+function loadConfig()
+  config = vlc.config.configdir() .. "/" .. config_file
+  if not vlc.io.open(config,'r') then 
+    saveConfig()
+  else
+    local line,val
+    local file=io.open(config,"rt")
+    for i=1,#jezici do
+      val = string.match(file:read(),"=%s*([01])")
+      dlg_cbox[i]:set_checked(val=="1" and true or false)
+    end
+    file:close()
+  end
+  vlc.msg.info("[VLC-Titlovi] Konfiguracija učitana")
+end
+
+function saveConfig()
+  local langs = ""
+  local file=io.open(config,"wt")
+  for i=1,#jezici do
+    langs = langs .. jezici[i][1] .. "=" .. (dlg_cbox[i]:get_checked() and 1 or 0) .. "\n"
+  end
+  file:write(langs)
+  file:close()
+  vlc.msg.info("[VLC-Titlovi] Konfiguracija snimljena")
+end
 
 function getVideoNameWoExt()
   if(getVideoName() ~= "") then
@@ -452,7 +510,7 @@ function menu()
 end
 
 function trigger_menu(id)
-
+  dlg:update()
 end
 
 function close()
@@ -460,14 +518,6 @@ function close()
 end
 
 function deactivate()
-  --[[
-  for key,val in pairs(jezici) do
-    if(dlg_cbox[key]:get_checked()) then 
-      vlc.config.set(val[1],"1")
-    else
-      vlc.config.set(val[1],"0")
-    end
-  end
-  --]]
+  saveConfig()
   dlg:delete()
 end
