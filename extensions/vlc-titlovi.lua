@@ -15,7 +15,7 @@ biblioteke: zzlib, inflate-bit32 i numberlua
 
 
 title = "VLC-Titlovi"
-version = "1.3"
+version = "1.4"
 
 program = title .. " " ..version
 
@@ -67,9 +67,6 @@ tipovi = { [0] = "-",
            [3] = "dokumentarac" }
            
            
-interface = { [""] = {} }
-
-
 local zzlib = require("zzlib")
 
 
@@ -95,7 +92,6 @@ function activate()
   
   for key,val in pairs(jezici) do
     dlg_cbox[key] = dlg:add_check_box(val[3],false,val[4],2,val[5],1)
-    --if(vlc.config.get(val[1])=="1") then dlg_cbox[key]:set_checked(true) end
   end
 
   -- 2nd line ------------------------------------------------------------------
@@ -118,17 +114,23 @@ function activate()
 
   dlg:add_label(" ",1,7,80)
   dlg:add_label("<small>Dio imena za pretraživanje:</small>",1,8,60)
-  dlg:add_label("<small>Sezona:</small>",61,8,10)
-  dlg:add_label("<small>Epizoda:</small>",71,8,10)
+  dlg:add_label("<small>Sezona:</small>",61,8,7)
+  dlg:add_label("<small>Epizoda:</small>",68,8,7)
+  dlg:add_label("<small>Godina:</small>",75,8,6)
   
   dlg_txt = dlg:add_text_input(cleanKeywords(getVideoNameWoExt()),1,9,60)
   local s = string.match(getVideoNameWoExt(),".*[sS](%d?%d)")
   if(s == nil) then s="" end
-  dlg_sez = dlg:add_text_input(s,61,9,10)
+  dlg_sez = dlg:add_text_input(s,61,9,7)
   local e = string.match(getVideoNameWoExt(),".*[eE](%d?%d)")
   if(e == nil) then e="" end
-  dlg_epi = dlg:add_text_input(e,71,9,10)
+  dlg_epi = dlg:add_text_input(e,68,9,7)
+  local g = string.match(getVideoNameWoExt(),".-(%d%d%d%d)")
+  if(g == nil) then g="" end
+  dlg_gdn = dlg:add_text_input(g,75,9,6)
   dlg_btn = dlg:add_button("Pronađi",find_first,81,9,20,1)
+  
+  -- 4th line ------------------------------------------------------------------
 
   dlg_res = dlg:add_label(getFilePath(),1,10,80)
   dlg:add_button("<",find_prev,81,10,6)
@@ -195,9 +197,9 @@ function find(pg)
 
   r = 0
   
-  local s,e
-
   if(dlg_txt:get_text() ~= "") then
+
+    local s,e
 
     dlg_btn:set_text("Čekaj")
     dlg_typ:set_text("")
@@ -234,6 +236,12 @@ function find(pg)
       if(not e or s == 0) then e = 0 end
       dlg_epi:set_text(e)
       url = url .. "&e=" .. e
+    end
+    if(dlg_gdn:get_text() ~= "") then 
+      g = tonumber(dlg_gdn:get_text())
+      if not g then g = "" end
+      dlg_gdn:set_text(g)
+      url = url .. "&g=" .. g
     end
     if(dlg_upld:get_text() ~= "") then 
       url = url .. "&korisnik=" .. vlc.strings.encode_uri_component(dlg_upld:get_text()) 
@@ -272,13 +280,6 @@ function find(pg)
 
         lang = tonumber(string.match(li,"alt=\"(%d)\""))        
 
-        --[[
-        naslov = naslov .. " " string.match(li,"<h4>(.-)<span")
-
-        ss,ee = string.find(li,"alt=\"%d\"")
-        lang = tonumber(string.sub(li,ss+5,ee-1))
-        --]]
-        
         dlg_lst:add_value("[" .. jezici[lang][1] .. "] " .. naslov,id)
 
         s,e = string.find(ul,"<h3.-h5>",e)
@@ -310,6 +311,10 @@ function load()
 
   buf = ""
   
+  dlg_icn = dlg:add_spin_icon(89,7,4,2)
+  dlg_icn:animate()
+  dlg:update()
+
   local url = "https://titlovi.com/download/?type=2&mediaid="
 
   for key,val in pairs(dlg_lst:get_selection()) do
@@ -350,9 +355,18 @@ function load()
     break
 
   end
+
+  dlg_icn:stop()
+  dlg:del_widget(dlg_icn)
+  dlg:update()
+    
 end
 
 function select()
+
+  dlg_icn = dlg:add_spin_icon(89,7,4,2)
+  dlg_icn:animate()
+  dlg:update()
 
   for idx,filename in pairs(dlg_lst:get_selection()) do
     save(zzlib.unzip(buf,filename),filename)
@@ -361,6 +375,10 @@ function select()
   
   vlc.msg.dbg("[VLC-Titlovi] Pročitani podaci iz ZIP arhive")
 
+  dlg_icn:stop()
+  dlg:del_widget(dlg_icn)
+  dlg:update()
+    
 end
 
 function save(data,filename)
@@ -386,7 +404,7 @@ end
 --
 
 function about()
-  html = dlg:add_html("<h4>O programu</h4>Ovaj dodatak za VLC player služi za automatsko skidanje" 
+  html = dlg:add_html("<h3>O programu</h3>Ovaj dodatak za VLC player služi za automatsko skidanje" 
   .." titlova sa regionalnog sajta <a href=\"http://titlovi.com\">Titlovi.com</a>. " 
   .."<ul><li>odaberite jezike titla, vrstu sortiranja rezultata, vrstu sadržaja i ev. upladera titla</li>"
   .."<li>unesite 2-3 ključne riječi iz imena (ne pretjerujte jer od previše se smanuje pretraga)</li>"
@@ -395,7 +413,8 @@ function about()
   .."<li>odaberite titl s popisa (može biti da je SRT ili ZIP) i učitajte ga tipkom [<u>Učitaj</u>]</li>"
   .."<li>ako je datoteka ZIP s više titlova određeni titl možete odabrati tipkom [<u>Odaberi</u>]</li></ul>"
   .." Datoteku titla sprema se u folder u kojemu je film i istog imena kao film samo s nastavkom .srt"
-  .." Ako se film ne reproducira u VLC, onda se titl snima u korisnikov osobni folder.",1,12,80,32)
+  .." Ako se film ne reproducira u VLC, onda se titl snima u korisnikov osobni folder."
+  .." Ovaj VLC dodatak može se naći na web-adresi: <a href=\"https://addons.videolan.org/p/1572365\">VLC-Titlovi</a>",1,12,80,32)
   oprg = dlg:add_button("ok",help,81,36,20)
   dlg:update()
 end
@@ -483,22 +502,26 @@ function cleanKeywords(text)
   if(text ~= "") then
     --oznake koje se uklanjaju iz naziva datoteke filma za bolje pretraživanje titla
     local pattern = { "360p","480p","720p","1080p","2160p","4320p","HEVC","XviD","XVID",
-                      "MP4","MKV","WEB DL","Mp4","mp4","mkv","MPEG","MP3","XXX",
+                      "MP4","MKV","WEB DL","WEBRip","Mp4","mp4","mkv","MPEG","MP3","XXX",
                       "BRrip","BrRip","DVDrip","WEBrip","BluRay","H264","H265","x264",
                       "x265","AAC","AC3","HDTV","HDMI","HDR 5.1","DTS","FiHTV",
                       "aXXo","YIFY","-EVO","CtrlHD","RoCK","TURMOiL","-MEMENTO","TGx",
                       "ShAaNiG","eztv","-FQM","-CTU","-ASAP","REFiNED","COALiTiON",
-                      "GalaxyRG","YTS","-PHOENiX","TiTAN","-CPG","-NOGRP","EtHD",
+                      "-GalaxyRG","YTS","-PHOENiX","TiTAN","-CPG","-NOGRP","EtHD",
                       "-EXPLOIT","-END","MkvCage","-CODEX","eztv","-EMPATHY","-CMRG",
-                      "QxR","-GoT","-MiNX"}
+                      "QxR","-GoT","-MiNX","-RARBG","-ION10","-CYBER","-PSA","-MT",
+                      "-CAKES","-TORRENTGALAXY","-NWCHD","-AFG","-SYNCOPY","Deep61",
+                      "-CAFFEiNET","ESub"," - ItsMyRip","-BAE","-TIMECUT","TJET",
+                      "-CM","-VXT"," - LOKiDH"," - EMBER"}
+    for _,val in pairs(pattern) do
+      text = string.gsub(text,val,"")
+    end
     text = string.gsub(text,"%."," ")
     text = string.gsub(text,"%[","")
     text = string.gsub(text,"%]"," ")
     text = string.gsub(text,"[sS]%d?%d","")
     text = string.gsub(text,"[eE]%d?%d","")
-    for key,val in pairs(pattern) do
-      text = string.gsub(text," " .. val,"")
-    end
+    text = string.gsub(text,"[12][90]%d%d","")
   end
   return text
 end
