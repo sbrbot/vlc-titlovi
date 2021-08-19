@@ -15,7 +15,7 @@ biblioteke: zzlib, inflate-bit32 i numberlua
 
 
 title = "VLC-Titlovi"
-version = "1.4"
+version = "1.5"
 
 program = title .. " " ..version
 
@@ -462,7 +462,9 @@ function getVideoNameWoExt()
 end
 
 function getVideoName()
-  return (vlc.input.item()) and vlc.input.item():name() or  ""
+  local metas = vlc.input.item():metas()
+  if metas ~= nil then return metas["filename"] end
+  return ""
 end
 
 function getFilePath()
@@ -503,7 +505,7 @@ function cleanKeywords(text)
     --oznake koje se uklanjaju iz naziva datoteke filma za bolje pretraživanje titla
     local pattern = { "360p","480p","720p","1080p","2160p","4320p","HEVC","XviD","XVID",
                       "MP4","MKV","WEB DL","WEBRip","Mp4","mp4","mkv","MPEG","MP3","XXX",
-                      "BRrip","BrRip","DVDrip","WEBrip","BluRay","H264","H265","x264",
+                      "BRrip","BrRip","DVDrip","WEBrip","BluRay","H264","H265","x264","DvdRip",
                       "x265","AAC","AC3","HDTV","HDMI","HDR 5.1","DTS","FiHTV",
                       "aXXo","YIFY","-EVO","CtrlHD","RoCK","TURMOiL","-MEMENTO","TGx",
                       "ShAaNiG","eztv","-FQM","-CTU","-ASAP","REFiNED","COALiTiON",
@@ -514,7 +516,7 @@ function cleanKeywords(text)
                       "-CAFFEiNET","ESub"," - ItsMyRip","-BAE","-TIMECUT","TJET",
                       "-CM","-VXT"," - LOKiDH"," - EMBER"}
     for _,val in pairs(pattern) do
-      text = string.gsub(text,val,"")
+      if(text ~= "") then text = string.gsub(text,val,"") end
     end
     text = string.gsub(text,"%."," ")
     text = string.gsub(text,"%[","")
