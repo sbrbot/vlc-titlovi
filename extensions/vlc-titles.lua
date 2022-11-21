@@ -1,25 +1,24 @@
 --[[
 
-VLC addon (dodatak) "VLC-Titlovi" služi za skidanje titlova sa sajta Titlovi.com
-unutar VLC pregledika. Pokrenite film i iz izbornika View -> Titovi poreknite
-ovaj dodatak kojim tražite titlove. 
+VLC add-on "VLC-Titles" is used for downloading subtitles from site Titlovi.com
+inside VLC player. Start movie and from menu View -> Titles launch this add-on
 
-Titl će biti snimljen u isti folder u kojem se nalazi i film ili u korisnikov
-folder. Program može skidati titlove direktno u SRT formatu ili zapakirane 
-unutar ZIP arhive.
+The subtitle file will be saved in the same folder where the movie resides or in
+user's home folder. The add.on can download subtitles in SRT format or ones 
+aricheved within ZIP file.
 
-Za čitanje i dekompresiju podataka unutar ZIP arhive ovaj program korisiti
-biblioteke: zzlib, inflate-bit32 i numberlua 
+For loading and decompression of data from ZIP archive this add-on uses the
+following libraries: zzlib, inflate-bit32, numberlua 
 
 --]]
 
 
-title = "VLC-Titlovi"
+title = "VLC-Titles"
 version = "1.6"
 
 program = title .. " " ..version
 
-config_file = "vlc-titlovi.conf"
+config_file = "vlc-titles.conf"
 config = ""
 
 icon = "\137\80\78\71\13\10\26\10\0\0\0\13\73\72\68\82\0\0\0\32\0\0\0\32\4\3\0\0"..
@@ -42,29 +41,29 @@ pg=1
 rpp=15
 r=0
 
-jezici = { [1] = {"ba","bosanski","bošnjački",1,8},
-           [4] = {"hr","hrvatski","hrvatski",10,8},
-           [5] = {"mk","makedonski","makedonski",18,12},
-           [6] = {"si","slovenski","slovenski",31,10},
-           [7] = {"rs","srpski","srpski",43,12},
-           [2] = {"ћ", "cirilica","ћирилица",55,12},
-           [3] = {"en","english","engleski",69,12} }
+jezici = { [1] = {"ba","bosanski","Bosnian",1,8},
+           [4] = {"hr","hrvatski","Croatian",10,8},
+           [5] = {"mk","makedonski","Macedonian",18,12},
+           [6] = {"si","slovenski","Slovenian",31,10},
+           [7] = {"rs","srpski","Serbian",43,12},
+           [2] = {"ћ", "cirilica","Cyrilic",55,12},
+           [3] = {"en","english","English",69,12} }
 
 sortiranje = { [0] = "-",
-               [1] = "po imenu",
-               [2] = "po jeziku",
-               [3] = "po uploaderu",
-               [4] = "po datumu uploada",
-               [5] = "po statusu",
-               [6] = "po broju downloada",
-               [7] = "po broju komentara",
-               [8] = "po broju ocjena",
-               [9] = "po ocjeni" }
+               [1] = "by name",
+               [2] = "by language",
+               [3] = "by uploader",
+               [4] = "by upload date",
+               [5] = "by status",
+               [6] = "by num of download",
+               [7] = "by num of comments",
+               [8] = "by num of marks",
+               [9] = "by mark" }
 
 tipovi = { [0] = "-",
-           [1] = "film",
-           [2] = "serija",
-           [3] = "dokumentarac" }
+           [1] = "movie",
+           [2] = "series",
+           [3] = "documentary" }
            
            
 local zzlib = require("zzlib")
@@ -77,7 +76,7 @@ function descriptor()
     version = version,
     author = "Stjepan Brbot",
     url = "https://github.com/sbrbot/vlc-titlovi",
-    description = "Skidanje titlova sa sajta http://titlovi.com",
+    description = "Download of titles form site http://titlovi.com",
     capabilities = {"menu"}
   }
 end
@@ -88,7 +87,7 @@ function activate()
   
   -- 1st line ------------------------------------------------------------------
 
-  dlg:add_label("<small>Filter za jezik titlova:</small>",1,1,80,1)
+  dlg:add_label("<small>Tile language filter:</small>",1,1,80,1)
   
   for key,val in pairs(jezici) do
     dlg_cbox[key] = dlg:add_check_box(val[3],false,val[4],2,val[5],1)
@@ -96,8 +95,8 @@ function activate()
 
   -- 2nd line ------------------------------------------------------------------
 
-  dlg:add_label("<small>Sortiranje rezultata:</small>",1,3,60,1)
-  dlg:add_label("<small>Tip sadržaja:</small>",61,3,20,1)
+  dlg:add_label("<small>Sorting of results:</small>",1,3,60,1)
+  dlg:add_label("<small>Content type:</small>",61,3,20,1)
   dlg:add_label("<small>Uploader:</small>",81,3,20,1)
   
   dlg_sort = dlg:add_dropdown(1,4,60,2)
@@ -113,10 +112,12 @@ function activate()
   -- 3rd line ------------------------------------------------------------------
 
   dlg:add_label(" ",1,7,80)
-  dlg:add_label("<small>Dio imena za pretraživanje:</small>",1,8,60)
-  dlg:add_label("<small>Sezona:</small>",61,8,7)
-  dlg:add_label("<small>Epizoda:</small>",68,8,7)
-  dlg:add_label("<small>Godina:</small>",75,8,6)
+  dlg:add_label("<small>Part of name for search:</small>",1,8,60)
+  dlg:add_label("<small>Season:</small>",61,8,7)
+  dlg:add_label("<small>Episode:</small>",68,8,7)
+  dlg:add_label("<small>Year:</small>",75,8,6)
+  
+  vlc.msg.info("[VLC-Titles] Video name: " .. getVideoNameWoExt())
   
   dlg_txt = dlg:add_text_input(cleanKeywords(getVideoNameWoExt()),1,9,60)
   local s = string.match(getVideoNameWoExt(),".*[sS](%d?%d)")
@@ -128,7 +129,7 @@ function activate()
   local g = string.match(getVideoNameWoExt(),".-(%d%d%d%d)")
   if(g == nil) then g="" end
   dlg_gdn = dlg:add_text_input(g,75,9,6)
-  dlg_btn = dlg:add_button("Pronađi",find_first,81,9,20,1)
+  dlg_btn = dlg:add_button("Search",find_first,81,9,20,1)
   
   -- 4th line ------------------------------------------------------------------
 
@@ -140,11 +141,11 @@ function activate()
   -- 4.1st line ----------------------------------------------------------------
   
   dlg_lst = dlg:add_list(1,12,80,32)
-  dlg:add_label("<center><small>stranica</small></center>",81,12,20)
+  dlg:add_label("<center><small>page</small></center>",81,12,20)
   
   -- 4.2nd line ----------------------------------------------------------------
   
-  dlg:add_button("Učitaj",load,81,15,20)
+  dlg:add_button("Load",load,81,15,20)
   
   -- 4.3rd line ----------------------------------------------------------------
 
@@ -158,7 +159,7 @@ function activate()
   
   -- 4.5th line ----------------------------------------------------------------
 
-  dlg:add_button("Pomoć",about,81,36,20)
+  dlg:add_button("Help",about,81,36,20)
   
   -- 4.6th line ----------------------------------------------------------------
   
@@ -201,7 +202,7 @@ function find(pg)
 
     local s,e
 
-    dlg_btn:set_text("Čekaj")
+    dlg_btn:set_text("Wait")
     dlg_typ:set_text("")
     dlg_lst:clear()
     
@@ -249,7 +250,7 @@ function find(pg)
     
     url = url .. "&pg=" .. pg
     
-    vlc.msg.info("[VLC-Titlovi] url = " .. url)
+    vlc.msg.info("[VLC-Titles] url = " .. url)
     
     local data = vlc.stream(url):read(4^8);
 
@@ -293,15 +294,15 @@ function find(pg)
       dlg_sel_set = false
     end
 
-    dlg_btn:set_text("Pronađi")
+    dlg_btn:set_text("Search")
     
     dlg_icn:stop()
     dlg:del_widget(dlg_icn)
     dlg:update()
     
-    dlg_res:set_text("Pronađeno: <b>" .. r .. "</b>")
+    dlg_res:set_text("Found: <b>" .. r .. "</b>")
         
-    vlc.msg.dbg("[VLC-Titlovi] Završena pretraga sajta")
+    vlc.msg.dbg("[VLC-Titles] Site search finished")
   
   end
   
@@ -323,7 +324,7 @@ function load()
 
     local stream = vlc.stream(url)
     if not stream then
-      vlc.msg.warn("[VLC-Titlovi] Sajt Titlovi.com nedostupan ") 
+      vlc.msg.warn("[VLC-Titles] Website Titlovi.com unavailable ") 
       return false 
     end
     local data = stream:read(8^4)
@@ -332,7 +333,7 @@ function load()
       data = stream:read(8^4)
     end
     
-    vlc.msg.dbg("[VLC-Titlovi] Podaci učitani sa sajta")
+    vlc.msg.dbg("[VLC-Titles] Site data loaded")
 
     if(string.sub(buf,1,2) == "PK") then -- Phil Katz
       dlg_typ:set_text("<center>ZIP<c/enter>")
@@ -344,12 +345,12 @@ function load()
         for key,val in pairs(filenames) do
           dlg_lst:add_value(val,key)
         end
-        dlg_sel = dlg:add_button("Odaberi",select,81,15,20)
+        dlg_sel = dlg:add_button("Select",select,81,15,20)
         dlg_sel_set = true
       end
     else
       dlg_typ:set_text("<center>SRT</center>")
-      save(buf,"VLC-titlovi.srt")
+      save(buf,"VLC-titles.srt")
     end
     
     break
@@ -370,10 +371,10 @@ function select()
 
   for idx,filename in pairs(dlg_lst:get_selection()) do
     save(zzlib.unzip(buf,filename),filename)
-    break -- spremi samo prvi zapis
+    break -- save only the first record
   end
   
-  vlc.msg.dbg("[VLC-Titlovi] Pročitani podaci iz ZIP arhive")
+  vlc.msg.dbg("[VLC-Titles] ZIP archive data loaded")
 
   dlg_icn:stop()
   dlg:del_widget(dlg_icn)
@@ -395,26 +396,26 @@ function save(data,filename)
   if(vlc.input.item()) then
     vlc.input.add_subtitle(filename,true)
   end
-  dlg_typ:set_text("<center>Snimljeno!</center>")
+  dlg_typ:set_text("<center>Saved!</center>")
 
-  vlc.msg.info("[VLC-Titlovi] Titl snimljen: " .. filename)
+  vlc.msg.info("[VLC-Titles] Title saved: " .. filename)
 
 end
 
 --
 
 function about()
-  html = dlg:add_html("<h3>O programu</h3>Ovaj dodatak za VLC player služi za automatsko skidanje" 
-  .." titlova sa regionalnog sajta <a href=\"http://titlovi.com\">Titlovi.com</a>. " 
-  .."<ul><li>odaberite jezike titla, vrstu sortiranja rezultata, vrstu sadržaja i ev. upladera titla</li>"
-  .."<li>unesite 2-3 ključne riječi iz imena (ne pretjerujte jer od previše se smanuje pretraga)</li>"
-  .."<li>upišite brojkom sezonu (0 znači sve sezone) i/ili pojedinu epizodu iz sezone/serije"
-  .."<li>pokrenite pretraživanje tipkom [<u>Pronađi</u>] nakon čega se pronađeni titlovi prikazuju u listi</li>"
-  .."<li>odaberite titl s popisa (može biti da je SRT ili ZIP) i učitajte ga tipkom [<u>Učitaj</u>]</li>"
-  .."<li>ako je datoteka ZIP s više titlova određeni titl možete odabrati tipkom [<u>Odaberi</u>]</li></ul>"
-  .." Datoteku titla sprema se u folder u kojemu je film i istog imena kao film samo s nastavkom .srt"
-  .." Ako se film ne reproducira u VLC, onda se titl snima u korisnikov osobni folder."
-  .." Ovaj VLC dodatak može se naći na web-adresi: <a href=\"https://addons.videolan.org/p/1572365\">VLC-Titlovi</a>",1,12,80,32)
+  html = dlg:add_html("<h3>About</h3>this add-on for VLC player is used for automatic download of" 
+  .." titles from regional website <a href=\"http://titlovi.com\">Titlovi.com</a>. " 
+  .."<ul><li>select title language, sorting type, content type, and optionally title uploader</li>"
+  .."<li>insert 2-3 keywords from title name (do not insert too much because it could highly reduce results)</li>"
+  .."<li>insert the season with number (0 means all seasons) and/or some episode from season/series"
+  .."<li>run the search with button [<u>Search</u>] and found titles will be shown in list</li>"
+  .."<li>select the title from this list (could be in SRT or ZIP format) and load it with button [<u>Load</u>]</li>"
+  .."<li>if the file is a ZIP archieve with more titles, particlar title one can select with button [<u>Select</u>]</li></ul>"
+  .." The title file will be stored in folder where the movie file resides with the same filename as movie and extension .srt"
+  .." If the movie is not being palayed at the moment of search, then the found title will be saved in users home folder."
+  .." This VLC add-on one can find on website: <a href=\"https://addons.videolan.org/p/1572365\">VLC-Titles</a>",1,12,80,32)
   oprg = dlg:add_button("ok",help,81,36,20)
   dlg:update()
 end
@@ -440,7 +441,7 @@ function loadConfig()
     end
     file:close()
   end
-  vlc.msg.info("[VLC-Titlovi] Konfiguracija učitana")
+  vlc.msg.info("[VLC-Titles] Configuration loaded")
 end
 
 function saveConfig()
@@ -451,7 +452,7 @@ function saveConfig()
   end
   file:write(langs)
   file:close()
-  vlc.msg.info("[VLC-Titlovi] Konfiguracija snimljena")
+  vlc.msg.info("[VLC-Titles] Configuration saved")
 end
 
 function getVideoNameWoExt()
@@ -507,7 +508,7 @@ function cleanKeywords(text)
     --oznake koje se uklanjaju iz naziva datoteke filma za bolje pretraživanje titla
     local pattern = { "360p","480p","720p","1080p","2160p","4320p","HEVC","XviD","XVID",
                       "MP4","MKV","WEB DL","WEBRip","Mp4","mp4","mkv","MPEG","MP3","XXX",
-                      "BRrip","BrRip","DVDrip","WEBrip","BluRay","H264","H265","x264","DvdRip",
+                      "BRrip","BrRip","DVDrip","WEBrip","WebRip","BluRay","H264","H265","x264","DvdRip","HDrip","HDRip",
                       "x265","AAC","AC3","HDTV","HDMI","HDR 5.1","DTS","FiHTV",
                       "aXXo","YIFY","-EVO","CtrlHD","RoCK","TURMOiL","-MEMENTO","TGx",
                       "ShAaNiG","eztv","-FQM","-CTU","-ASAP","REFiNED","COALiTiON",
@@ -515,8 +516,8 @@ function cleanKeywords(text)
                       "-EXPLOIT","-END","MkvCage","-CODEX","eztv","-EMPATHY","-CMRG",
                       "QxR","-GoT","-MiNX","-RARBG","-ION10","-CYBER","-PSA","-MT",
                       "-CAKES","-TORRENTGALAXY","-NWCHD","-AFG","-SYNCOPY","Deep61",
-                      "-CAFFEiNET","ESub"," - ItsMyRip","-BAE","-TIMECUT","TJET",
-                      "-CM","-VXT"," - LOKiDH"," - EMBER"}
+                      "-CAFFEiNET","ESub"," - ItsMyRip","-BAE","-TIMECUT","TJET","-worldmkv",
+                      "-CM","-VXT"," - LOKiDH"," - EMBER"," BONE","TheUpscaler","-NAHOM"}
     for _,val in pairs(pattern) do
       if(text ~= "") then text = string.gsub(text,val,"") end
     end
