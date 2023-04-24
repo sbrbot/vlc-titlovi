@@ -14,7 +14,7 @@ following libraries: zzlib, inflate-bit32, numberlua
 
 
 title = "VLC-Titles"
-version = "1.6"
+version = "1.7"
 
 program = title .. " " ..version
 
@@ -127,7 +127,7 @@ function activate()
   if(e == nil) then e="" end
   dlg_epi = dlg:add_text_input(e,68,9,7)
   local g = string.match(getVideoNameWoExt(),".-(%d%d%d%d)")
-  if(g == nil) then g="" end
+  if(g == nil or g == '1080') then g="" end
   dlg_gdn = dlg:add_text_input(g,75,9,6)
   dlg_btn = dlg:add_button("Search",find_first,81,9,20,1)
   
@@ -505,7 +505,7 @@ end
 
 function cleanKeywords(text)
   if(text ~= "") then
-    --oznake koje se uklanjaju iz naziva datoteke filma za bolje pretraživanje titla
+    --strings automatically removed from title for better search
     local pattern = { "360p","480p","720p","1080p","2160p","4320p","HEVC","XviD","XVID",
                       "MP4","MKV","WEB DL","WEBRip","Mp4","mp4","mkv","MPEG","MP3","XXX",
                       "BRrip","BrRip","DVDrip","WEBrip","WebRip","BluRay","H264","H265","x264","DvdRip","HDrip","HDRip",
@@ -514,10 +514,11 @@ function cleanKeywords(text)
                       "ShAaNiG","eztv","-FQM","-CTU","-ASAP","REFiNED","COALiTiON",
                       "-GalaxyRG","YTS","-PHOENiX","TiTAN","-CPG","-NOGRP","EtHD",
                       "-EXPLOIT","-END","MkvCage","-CODEX","eztv","-EMPATHY","-CMRG",
-                      "QxR","-GoT","-MiNX","-RARBG","-ION10","-CYBER","-PSA","-MT",
+                      "QxR","-GoT","-MiNX","-RARBG","-R4RBG","-ION10","-CYBER","-PSA","-MT",
                       "-CAKES","-TORRENTGALAXY","-NWCHD","-AFG","-SYNCOPY","Deep61",
                       "-CAFFEiNET","ESub"," - ItsMyRip","-BAE","-TIMECUT","TJET","-worldmkv",
-                      "-CM","-VXT"," - LOKiDH"," - EMBER"," BONE","TheUpscaler","-NAHOM"}
+                      "-CM","-VXT"," - LOKiDH"," - EMBER"," BONE","TheUpscaler","-NAHOM",
+                      " - WEB-DL"," - eMKaVg","-BRiAN","-The.PunisheR"}
     for _,val in pairs(pattern) do
       if(text ~= "") then text = string.gsub(text,val,"") end
     end
@@ -527,6 +528,7 @@ function cleanKeywords(text)
     text = string.gsub(text,"[sS]%d?%d","")
     text = string.gsub(text,"[eE]%d?%d","")
     text = string.gsub(text,"[12][90]%d%d","")
+    text = string.gsub(text,"%d?%d?%d%dMB","")
   end
   return text
 end
